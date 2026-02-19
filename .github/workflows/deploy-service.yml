@@ -1,0 +1,129 @@
+name: Deploy Service
+
+on:
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'infra/**'
+      - 'src/**'
+  push:
+    branches: [ main ]
+    paths:
+      - 'infra/**'
+      - 'src/**'
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: us-east-2
+  TF_VERSION: 1.5.7
+  S3_TERRAFORM_STATE_BUCKET: fiap-tc-terraform-846874
+  S3_ASSETS_BUCKET: fiap-tc-terraform-functions-846874
+
+jobs:
+  terraform-validate:
+    name: Terraform Validate
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: ${{ env.TF_VERSION }}
+
+    - name: configure aws credentials
+      uses: aws-actions/configure-aws-credentials@v5.1.0
+      with:
+        role-to-assume:  ${{ vars.AWS_ROLE_ARN }}
+        role-session-name: GitHub_to_AWS_via_FederatedOIDC
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Terraform Init
+      working-directory: ./infra
+      run: terraform init
+      
+    - name: Terraform Validate
+      working-directory: ./infra
+      run: terraform validate
+      
+    - name: Terraform Format Check
+      working-directory: ./infra
+      run: terraform fmt -check
+
+  terraform-deploy:
+    name: Terraform Deploy
+    runs-on: ubuntu-latest
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      AWS_ROLE_ARN: ${{ vars.AWS_ROLE_ARN }}
+      GIT_SSH_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: ${{ env.TF_VERSION }}
+
+    - name: Setup SSH agent for git
+      uses: webfactory/ssh-agent@v0.9.0
+      with:
+        ssh-private-key: ${{ env.GIT_SSH_KEY }}
+
+    - name: configure aws credentials
+      uses: aws-actions/configure-aws-credentials@v5.1.0
+      with:
+        role-to-assume:  ${{ env.AWS_ROLE_ARN }}
+        role-session-name: GitHub_to_AWS_via_FederatedOIDC
+        aws-region: ${{ env.AWS_REGION }}
+        
+    - name: Verify S3 Backend Access
+      run: |
+        echo "Verificando acesso ao bucket S3 S3_TERRAFORM_STATE_BUCKET: ${{ env.S3_TERRAFORM_STATE_BUCKET }}..."
+        aws s3api head-bucket --bucket ${{ env.S3_TERRAFORM_STATE_BUCKET }}
+        
+    - name: Terraform Init
+      working-directory: ./infra
+      run: terraform init
+      
+    - name: Terraform Validate
+      working-directory: ./infra
+      run: terraform validate
+      
+    - name: Setup Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.22.x'
+
+    - name: Build Lambda (Go)
+      working-directory: ./src
+      run: |
+        GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o bootstrap ./
+
+    - name: Create Lambda ZIP
+      working-directory: ./src
+      run: |
+        zip -j "../lambda-function.zip" bootstrap
+        echo "LAMBDA_ZIP_NAME=lambda-function.zip" >> $GITHUB_ENV
+
+    - name: Upload ZIP to S3
+      run: |
+        aws s3 cp $LAMBDA_ZIP_NAME s3://${{ env.S3_ASSETS_BUCKET }}/$LAMBDA_ZIP_NAME
+        echo "Arquivo atualizado: $LAMBDA_ZIP_NAME no bucket ${{ env.S3_ASSETS_BUCKET }}"
+
+    - name: Terraform Plan
+      working-directory: ./infra
+      run: terraform plan
+
+    - name: Terraform Apply
+      working-directory: ./infra
+      run: terraform apply -auto-approve

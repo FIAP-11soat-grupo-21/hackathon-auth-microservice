@@ -1,0 +1,51 @@
+name: Destroy Service
+
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  terraform-destroy:
+    name: Terraform Destroy (infra)
+    runs-on: ubuntu-latest
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      AWS_ROLE_ARN: ${{ vars.AWS_ROLE_ARN }}
+      GIT_SSH_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: "1.6.6"
+
+      - name: Setup SSH agent for git
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ env.GIT_SSH_KEY }}
+
+      - name: configure aws credentials
+        uses: aws-actions/configure-aws-credentials@v5.1.0
+        with:
+          role-to-assume:  ${{ env.AWS_ROLE_ARN }}
+          role-session-name: GitHub_to_AWS_via_FederatedOIDC
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Terraform Init
+        working-directory: infra
+        run: |
+          terraform init -input=false
+
+      - name: Terraform Destroy
+        working-directory: infra
+        run: |
+          terraform destroy -input=false -auto-approve
+
+      - name: Done
+        run: echo "Terraform destroy finished."
