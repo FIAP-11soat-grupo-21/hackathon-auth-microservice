@@ -13,7 +13,7 @@ module "jwt_function" {
     {
       COGNITO_CLIENT_ID     = data.terraform_remote_state.infra.outputs.cognito_user_pool_client_id
       COGNITO_CLIENT_SECRET = data.terraform_remote_state.infra.outputs.cognito_user_pool_client_secret
-      COGNITO_USER_POOL_ID          = data.terraform_remote_state.infra.outputs.cognito_user_pool_id
+      COGNITO_USER_POOL_ID  = data.terraform_remote_state.infra.outputs.cognito_user_pool_id
     }
   )
   vpc_id      = data.terraform_remote_state.infra.outputs.vpc_id
