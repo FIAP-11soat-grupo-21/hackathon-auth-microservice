@@ -45,7 +45,7 @@ jobs:
       - name: Terraform Destroy
         working-directory: infra
         run: |
-          terraform destroy -input=false -auto-approve
+          terraform destroy -var-file=values.tfvars -input=false -auto-approve 
 
       - name: Done
         run: echo "Terraform destroy finished."

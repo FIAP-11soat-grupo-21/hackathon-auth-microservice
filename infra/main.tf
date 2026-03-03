@@ -4,7 +4,7 @@ module "jwt_function" {
   source = "git::https://github.com/FIAP-11soat-grupo-21/infra-core.git//modules/Lambda?ref=main"
 
   api_id      = data.terraform_remote_state.api_gateway.outputs.api_id
-  lambda_name = "auth-jwt-function"
+  lambda_name = var.function_name
   handler     = "bootstrap"
   runtime     = "provided.al2023"
   subnet_ids  = data.terraform_remote_state.network_vpc.outputs.private_subnets
@@ -20,8 +20,8 @@ module "jwt_function" {
   memory_size = 512
   timeout     = 30
 
-  s3_bucket = var.bucket_name
-  s3_key    = "lambda-function.zip"
+  s3_bucket = data.terraform_remote_state.function_bucket.outputs.bucket_name
+  s3_key    = "${var.function_name}.zip"
 
   role_permissions = {
     cognito = {
@@ -43,6 +43,7 @@ module "jwt_function" {
       ]
     }
   }
+  tags = data.terraform_remote_state.app_registry.outputs.app_registry_application_tag
 }
 
 resource "aws_apigatewayv2_route" "lambda_route" {
