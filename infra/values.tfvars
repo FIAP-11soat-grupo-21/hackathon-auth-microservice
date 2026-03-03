@@ -1,1 +1,1 @@
-function_name="auth-jwt-function"
+function_name = "auth-jwt-function"

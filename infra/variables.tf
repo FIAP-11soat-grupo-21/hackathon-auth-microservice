@@ -5,7 +5,7 @@ variable "lambda_environment_variables" {
 }
 
 variable "function_name" {
-    description = "Nome da função Lambda"
-    type        = string
-    default     = "my-lambda-function"
+  description = "Nome da função Lambda"
+  type        = string
+  default     = "my-lambda-function"
 }
