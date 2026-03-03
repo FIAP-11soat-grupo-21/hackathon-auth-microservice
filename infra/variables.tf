@@ -4,8 +4,8 @@ variable "lambda_environment_variables" {
   default     = {}
 }
 
-variable "bucket_name" {
-  description = "Nome do bucket S3 para armazenar o código da função Lambda"
+variable "function_name" {
+  description = "Nome da função Lambda"
   type        = string
-  default     = "fiap-tc-terraform-functions-846874"
+  default     = "my-lambda-function"
 }
