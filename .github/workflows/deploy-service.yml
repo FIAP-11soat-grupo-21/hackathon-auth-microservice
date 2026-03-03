@@ -112,8 +112,8 @@ jobs:
     - name: Create Lambda ZIP
       working-directory: ./src
       run: |
-        zip -j "../lambda-function.zip" bootstrap
-        echo "LAMBDA_ZIP_NAME=lambda-function.zip" >> $GITHUB_ENV
+        zip -j "../auth-jwt-function.zip" bootstrap
+        echo "LAMBDA_ZIP_NAME=auth-jwt-function.zip" >> $GITHUB_ENV
 
     - name: Upload ZIP to S3
       run: |
