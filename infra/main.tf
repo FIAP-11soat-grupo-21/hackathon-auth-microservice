@@ -1,5 +1,6 @@
 data "aws_region" "current" {}
 
+# Auth Lambda Function
 module "jwt_function" {
   source = "git::https://github.com/FIAP-11soat-grupo-21/infra-core.git//modules/Lambda?ref=main"
 
